@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Hex Pipes</title>
+    <link rel="stylesheet" type="text/css" href="./style.css">
+    </link>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.1/socket.io.js"></script>
+    <script type="text/javascript" src="./assetmanager.js"></script>
+    <script type="text/javascript" src="./histogram.js"></script>
+    <script type="text/javascript" src="./graph.js"></script>
+    <script type="text/javascript" src="./gameengine.js"></script>
+    <script type="text/javascript" src="./util.js"></script>
+    <script type="text/javascript" src="./params.js"></script>
+    <script type="text/javascript" src="./hexgrid.js"></script>
+    <script type="text/javascript" src="./organism.js"></script>
+    <script type="text/javascript" src="./organismgraph.js"></script>
+    <script type="text/javascript" src="./main.js"></script>
+</head>
+
+<body>
+    <canvas id="gameWorld" width="1600" height="1000"></canvas>
+    <div id="controlPanel">
+        <div id="db" class="db-status">Database</div>
+        <div id="frameRate" class="frame-rate">Tick</div>
+        <div id="parameters">
+
+            <div class="parameter-section">
+                <label for="numOrganisms">Initial Organisms:</label>
+                <input type="number" id="numOrganisms" value="30" min="1" max="500" step="1" />
+                <label for="gridRadius">Hexagon Grid Radius:</label>
+                <input type="number" id="gridRadius" value="25" min="1" max="50" step="1" />
+                <label for="cellSize">Hexagon Cell Size:</label>
+                <input type="number" id="cellSize" value="12" min="8" max="20" step="1" />
+                <label for="k_diffusion">Diffusion Rate:</label>
+                <input type="number" id="k_diffusion" value="0.15" min="0" max="0.16" step="0.01" />
+                <label for="k_pipeFlow">Pipe Flow Rate:</label>
+                <input type="number" id="k_pipeFlow" value="0.75" min="0" max="1" step="0.01" />
+                <label for="lossRate">Pipe Resource Loss Rate (percent of resource turned into energy):</label>
+                <input type="number" id="lossRate" value="0.05" min="0" max="1" step="0.01" />
+                <label for="mutationRate">Mutation Rate (%):</label>
+                <input type="number" id="mutationRate" value="0.05" min="0" max="100" step="0.01" />
+                <label for="reproductionThreshold">Reproduction Threshold:</label>
+                <input type="number" id="reproductionThreshold" value="100" min="50" max="1000" step="10" />
+                <label for="deathRate">Death Rate (% per tick):</label>
+                <input type="number" id="deathRate" value="0.005" min="0" max="1" step="0.001" />
+                <label for="starvationRate">Starvation Rate (% to die if less than threshold):</label>
+                <input type="number" id="starvationRate" value="0.5" min="0" max="1" step="0.01" />
+                <label for="starvationThreshold">Starvation Threshold (% of reproductionThreshold):</label>
+                <input type="number" id="starvationThreshold" value="0.01" min="0" max="1" step="0.001" />
+
+                <div id="orggraph">Ticks: 0 <br/> Total Organisms: 0 <br/> Max Count: 0<br/> Map Size: 0</div>
+            </div>
+
+            <button type="button" onclick="reset()">Reset Simulation</button>
+        </div>
+
+        <div id="options">
+            <input type="checkbox" id="red" checked />
+            <label for="red">Draw Red</label><br />
+
+            <input type="checkbox" id="green" checked />
+            <label for="green">Draw Green</label><br />
+
+            <input type="checkbox" id="blue" checked />
+            <label for="blue">Draw Blue</label><br />
+
+            <input type="checkbox" id="flow" checked />
+            <label for="flow">Show Flow</label><br />
+
+            <input type="checkbox" id="endpoints" checked />
+            <label for="endpoints">Show Endpoints</label><br />
+        </div>
+    </div>
+</body>
+
+</html>
