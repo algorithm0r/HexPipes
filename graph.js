@@ -17,7 +17,7 @@ class Graph {
     }
     draw(ctx) {
         if(this.resize) this.updateMinAndMax();
-        if (!document.getElementById("graphs").checked) return;
+        // if (!document.getElementById("graphs").checked) return;
 
         // Save the current context state
         this.ctx.save();

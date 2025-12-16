@@ -10,13 +10,6 @@ class Organism {
 
         this.energy = 0;
     }
-
-    organismID() {
-        const pipeCodes = this.pipes.map(pipe => 
-            `${pipe.inputSide}${pipe.inputColor}${pipe.outputSide}${pipe.outputColor}`
-        ).sort((a, b) => a.localeCompare(b)).join('-');
-        return pipeCodes;
-    }
     
     placeInGrid(q, r) {
         this.q = q;
@@ -275,22 +268,47 @@ class Organism {
         return colorMap[colorName];
     }
     
+    organismID() {
+        const pipeCodes = this.pipes.map(pipe => 
+            `${pipe.inputSide}${pipe.inputColor}${pipe.outputSide}${pipe.outputColor}`
+        ).sort((a, b) => a.localeCompare(b)).join('-');
+        return pipeCodes;
+    }
+
+    pipesFromID(pipeID) {
+        const pipeStrings = pipeID.split('-');
+        const pipes = pipeStrings.map(str => {
+            return {
+                inputSide: parseInt(str[0]),
+                inputColor: str[1],
+                outputSide: parseInt(str[2]),
+                outputColor: str[3]
+            };
+        });
+        return pipes;
+    }
+
     /**
      * Draw the organism and its pipes
      */
     draw(ctx) {
         const center = this.grid.hexToPixel(this.q, this.r);
         const size = this.grid.cellSize;
+        const flow = document.getElementById('flow').checked;
         
         // Draw each pipe
-        for (const pipe of this.pipes) {
-            this.drawPipe(ctx, center, size, pipe);
-        }
+        this.drawPipesAtPoint(ctx, center, size, this.pipes, flow);
 
         // Draw side numbers for debugging
         // this.drawSideNumbers(ctx);
     }
-    
+
+    drawPipesAtPoint (ctx, center, size, pipes, flow) {
+        for (const pipe of pipes) {
+            this.drawPipe(ctx, center, size, pipe, flow);
+        }
+    }
+
     /**
      * Get point on hexagon edge for a given side (0-5)
      */
@@ -308,7 +326,7 @@ class Organism {
     /**
      * Draw a single pipe with curved line
      */
-    drawPipe(ctx, center, size, pipe) {
+    drawPipe(ctx, center, size, pipe, flow) {
         const startPoint = this.getSidePoint(center, size, pipe.inputSide);
         const endPoint = this.getSidePoint(center, size, pipe.outputSide);
         
@@ -326,10 +344,10 @@ class Organism {
         
         if (isStraight) {
             // Draw straight line through center
-            this.drawGradientLine(ctx, startPoint, endPoint, inputColor, outputColor, pipe.flow);
+            this.drawGradientLine(ctx, startPoint, endPoint, inputColor, outputColor, pipe.flow, flow);
         } else {
             // Draw curved line that doesn't go through center
-            this.drawCurvedPipe(ctx, center, startPoint, endPoint, inputColor, outputColor, pipe.flow);
+            this.drawCurvedPipe(ctx, center, startPoint, endPoint, inputColor, outputColor, pipe.flow, flow);
         }
         
         // Draw direction indicators at the pipe endpoints (input/output)
@@ -410,15 +428,13 @@ class Organism {
     /**
      * Draw straight line with gradient
      */
-    drawGradientLine(ctx, start, end, startColor, outputColor, flow) {
+    drawGradientLine(ctx, start, end, startColor, outputColor, flow, showFlow) {
         const gradient = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
         gradient.addColorStop(0, rgb(startColor.R, startColor.G, startColor.B));
         gradient.addColorStop(0.5, 'rgb(128, 128, 128)'); // Gray in middle
         gradient.addColorStop(1, rgb(outputColor.R, outputColor.G, outputColor.B));
         
-        const flowCheckbox = document.getElementById('flow');   
-
-        if(flowCheckbox && flowCheckbox.checked) {
+        if(showFlow) {
             // Modulate color brightness by flow amount (0 to 1)
             const flowFactor = Math.floor(flow/(255*PARAMETERS.k_pipe)*255); // Scale flow for visibility
             ctx.strokeStyle = rgb(0, flowFactor, 0); // Greenish tint for flow
@@ -435,7 +451,7 @@ class Organism {
     /**
      * Draw curved pipe using quadratic bezier
      */
-    drawCurvedPipe(ctx, center, start, end, startColor, outputColor, flow) {
+    drawCurvedPipe(ctx, center, start, end, startColor, outputColor, flow, showFlow) {
         // Control point is perpendicular to midpoint, offset toward center
         const midX = (start.x + end.x) / 2;
         const midY = (start.y + end.y) / 2;
@@ -462,9 +478,7 @@ class Organism {
             // Interpolate color
             const color = this.interpolateColor(startColor, outputColor, t1);
 
-            const flowCheckbox = document.getElementById('flow');   
-
-            if(flowCheckbox && flowCheckbox.checked) {
+            if(showFlow) {
                 // Modulate color brightness by flow amount (0 to 1)
                 const flowFactor = Math.floor(flow/(255*PARAMETERS.k_pipe)*255); // Scale flow for visibility
                 ctx.strokeStyle = rgb(0, flowFactor, 0); // Greenish tint for flow

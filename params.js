@@ -1,7 +1,7 @@
 var PARAMETERS = {
     // Framework parameters
     updatesPerDraw: 1,
-    reportingPeriod: 96,
+    reportingPeriod: 100,
     db: "HexPipes",
     collection: "test",
     ip: 'https://73.19.38.112:8888',
@@ -35,6 +35,9 @@ var PARAMETERS = {
 
     arrowLength: 6,          // Length of flow direction arrows
     circleRadius: 3,       // Radius of flow direction circle
+
+    graphWidth: 600,
+    graphHeight: 120,
 };
 
 function loadParameters() {

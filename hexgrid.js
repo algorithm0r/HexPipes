@@ -37,6 +37,8 @@ class HexGrid {
         this.initializeGrid();
 
         this.organismGraph = new OrganismGraph(this);
+        this.dataManager = new DataManager(this);
+        gameEngine.addEntity(this.dataManager);
     }
     
     /**
@@ -313,7 +315,7 @@ class HexGrid {
             const offspring = organism.tryReproduce();
             if (offspring) {
                 newOrganisms.push(offspring);
-                this.organismGraph.addOrganism(offspring);
+                this.organismGraph.addOrganism(offspring, organism);
             }
         }
         this.organisms.push(...newOrganisms);
@@ -330,6 +332,11 @@ class HexGrid {
             }
             return true; // Keep in array
         });
+
+        // get unique living organism IDs
+        const livingIDs = this.organisms.map(org => org.organismID());
+        this.organismGraph.updateLivingOrganisms(livingIDs);
+        this.organismGraph.updateHTML();
     }
     
     /**
