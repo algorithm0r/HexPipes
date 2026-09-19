@@ -1,4 +1,6 @@
-class OrganismGraph {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var OrganismGraph = class OrganismGraph {
     constructor(hexGrid) {
         this.hexGrid = hexGrid;
         this.organismCount = new Map(); // Map from organism ID to count
@@ -59,12 +61,14 @@ class OrganismGraph {
             }
         }
 
-        const tempOrg = new Organism(this.hexGrid);
+        // "" selects the constructor branch that neither generates random pipes
+        // nor mutates, so building this scratch organism consumes no arng draws.
+        const tempOrg = new Organism(this.hexGrid, "");
         for (var i = 0; i < total_living_counts; i++) {
             const topOrgs = new Map();
 
             countMap.forEach((entry, id) => {
-                var pipes = tempOrg.pipesFromID(id);
+                var pipes = Organism.pipesFromID(id);
 
                 if (i & color_bitmask) {
                     pipes = pipes.map(pipe => {
@@ -158,7 +162,7 @@ class OrganismGraph {
                 this.livingCountsMatrix[i] = new Array(5);
                 for (const [index, id_list] of base5Order.entries()) {
                     this.livingCountsMatrix[i][index] = mapped.find((e) => e.orgID == id_list[0]) ??
-                        {orgID: id_list[0], count: 0, pipes: tempOrg.pipesFromID(id_list[0]), energy: 0};
+                        {orgID: id_list[0], count: 0, pipes: Organism.pipesFromID(id_list[0]), energy: 0};
                 }
 
             } else if (i === base_15_living_index) {
@@ -169,7 +173,7 @@ class OrganismGraph {
                 for (const id_list of base5Order) {
                     for (const id of id_list) {
                         this.livingCountsMatrix[i][index] = mapped.find((e) => e.orgID == id) ??
-                            {orgID: id, count: 0, pipes: tempOrg.pipesFromID(id), energy: 0};
+                            {orgID: id, count: 0, pipes: Organism.pipesFromID(id), energy: 0};
                         index += 1
                     }
                 }
@@ -180,10 +184,10 @@ class OrganismGraph {
     }
 
     updateHTML() {
-        document.getElementById('orggraph').innerHTML = `Tick: ${this.hexGrid.tick}<br/>
+        uiText('orggraph', `Tick: ${this.hexGrid.tick}<br/>
          Total Organisms: ${this.totalOrganisms} Unique Kinds: ${this.organismCount.size}<br/>
          Living Organisms: ${this.livingIDs.length} Unique Kinds: ${this.uniqueLivingIDs.size}<br/>
-         Max Count: ${this.maxCount} Max Offspring: ${this.maxOffspring}`;
+         Max Count: ${this.maxCount} Max Offspring: ${this.maxOffspring}`);
     }
 
     drawHex(ctx, center, size, color, strokeStyle = null) {
@@ -222,7 +226,7 @@ class OrganismGraph {
 
         const isBase15 = livingIndex === base_15_living_index;
         const isBase5 = livingIndex === base_5_living_index;
-        const sort_top_orgs = document.getElementById("sort-top-orgs").checked;
+        const sort_top_orgs = UI.sortTopOrgs;
 
         if (sort_top_orgs) entries.sort((a, b) => b.count - a.count);
 

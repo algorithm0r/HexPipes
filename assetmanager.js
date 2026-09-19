@@ -1,4 +1,6 @@
-class AssetManager {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var AssetManager = class AssetManager {
     constructor() {
         this.successCount = 0;
         this.errorCount = 0;

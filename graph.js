@@ -1,4 +1,6 @@
-class Graph {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var Graph = class Graph {
     constructor(x, y, width, height, data, label, min, max, resize = true, colors = base5Colors) {
         this.x = x;
         this.y = y;

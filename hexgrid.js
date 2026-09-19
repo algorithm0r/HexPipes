@@ -1,4 +1,6 @@
-class HexGrid {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var HexGrid = class HexGrid {
     constructor() {
         // Grid parameters
         this.radius = PARAMETERS.gridRadius;
@@ -35,6 +37,9 @@ class HexGrid {
         this.starvationDeaths = [];
         this.randomDeaths = [];
 
+        // Retained for schema compatibility with Spring 2026 runs, which logged
+        // real values under `taxPipeFlow`. That mechanic was removed (it only
+        // ever taxed the flow *visualization*), so this now stays 0.
         this.pipeFlowLoss = 0.0;
         this.chains = [];
 
@@ -44,7 +49,8 @@ class HexGrid {
         this.organismGraph = new OrganismGraph(this);
 
         this.dataManager = new DataManager(this);
-        window.gameEngine?.addEntity(this.dataManager);
+        // globalThis, not window: the same line has to work headless.
+        globalThis.gameEngine?.addEntity(this.dataManager);
     }
 
     resetCells() {
@@ -317,7 +323,7 @@ class HexGrid {
     update() {
         this.updateLineage()
 
-        if (document.getElementById('pause').checked) return;
+        if (UI.pause) return;
 
         this.tick++;
         // Step 1: Diffusion
@@ -526,11 +532,6 @@ class HexGrid {
                 const pipeFactor = this.calculateColorDistance(pipe.inputColor, pipe.outputColor) / 3;
 
                 pipe.flow = remainingFlow;
-                if (PARAMETERS.taxPipeFlow) {
-                    const loss = pipe.flow * PARAMETERS.loss_rate;
-                    pipe.flow -= loss;
-                    this.pipeFlowLoss += loss;
-                }
                 const organism = step.organism;
 
                 organism.energy = organism.energy + energyGained * pipeFactor;
@@ -682,9 +683,9 @@ class HexGrid {
         ctx.closePath();
 
         // force draw colors on cell tiles (for energy display)
-        const drawRed = cell.organism != null || document.getElementById('cell-draw-red').checked;
-        const drawGreen = cell.organism != null || document.getElementById('cell-draw-green').checked;
-        const drawBlue = cell.organism != null || document.getElementById('cell-draw-blue').checked;
+        const drawRed = cell.organism != null || UI.cellDrawRed;
+        const drawGreen = cell.organism != null || UI.cellDrawGreen;
+        const drawBlue = cell.organism != null || UI.cellDrawBlue;
         // Color based on RGB concentrations
         // Note: C/M/Y colors emerge from RGB combinations (C=G+B, M=R+B, Y=R+G)
         const r = drawRed ? Math.floor(cell.R) : 0;

@@ -1,13 +1,40 @@
-class Lineage {
+// ============================================================================
+// SHELVED - FEATURE IN PROGRESS (Spring 2026, Elijah Immer)
+//
+// GOAL: track lineages between shapes and organisms. Click a cell, and trace
+// that organism's ancestry back through its parents, showing how the pipe
+// configuration changed at each step - so a dominant configuration can be read
+// as the end of a path through the space rather than just a winner.
+//
+// STATE: not working, and deliberately left that way rather than deleted.
+//   - HexGrid.updateLineage() is disabled behind an early `return`; the body
+//     that would set `grid.lineage` from a click is commented out.
+//   - draw() below still refers to `this.livingCountsMatrix`,
+//     `getLivingCountIndex()` and a bare `ctx` - those belong to OrganismGraph,
+//     not here. It would throw if it ran; the `!this.grid.lineage` guard is all
+//     that saves it.
+//   - The blocker is HexGrid.pixelToHex(), which floors fractional axial
+//     coordinates instead of rounding to the nearest hex, so clicks do not map
+//     to the cell under the cursor.
+//
+// BEFORE RESUMING: decide whether per-organism ancestry is still needed. The
+// base5/base15 taxonomy and the 8-relation census landed after this was
+// started and may answer the same question in aggregate. See DEVPLAN Stage 4.
+// ============================================================================
+
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var Lineage = class Lineage {
     constructor(hexGrid) {
       this.grid = hexGrid;
-      const lineageCanvas = document.getElementById('lineage');
-      this.ctx = lineageCanvas.getContext('2d');
+      const lineageCanvas = HAS_DOM ? document.getElementById('lineage') : null;
+      this.ctx = lineageCanvas ? lineageCanvas.getContext('2d') : null;
     }
 
     update() { }
 
     draw() {
+        if (!this.ctx) return;
         this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
         if (!this.grid.lineage) return;
@@ -18,7 +45,7 @@ class Lineage {
         const size = 100;
         this.drawHex(this.ctx, center, size, GREY);
 
-        const tempOrg = new Organism(this.hexGrid);
+        const tempOrg = new Organism(this.hexGrid, "");
 
         ctx.save();
 

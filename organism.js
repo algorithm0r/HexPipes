@@ -1,6 +1,8 @@
 var pipe_mid_color = GREY_RGB;
 
-class Organism {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var Organism = class Organism {
     constructor(grid, organism) {
         this.grid = grid;
 
@@ -114,12 +116,6 @@ class Organism {
         return this.grid.getCell(q + dir.q, r + dir.r);
     }
 
-    /**
-     * Main update function
-     */
-    update() {
-        this.processPipes();
-    }
 
     /**
      * Deep copy pipes - simple structure is trivial to copy
@@ -291,7 +287,10 @@ class Organism {
         return pipeCodes;
     }
 
-    pipesFromID(pipeID = this.organismID) {
+    // Pure: decodes a genome string into pipes. Static so callers need no
+    // Organism instance - constructing one draws from arng and would couple
+    // the simulation's random stream to whatever calls this.
+    static pipesFromID(pipeID) {
         const pipeStrings = pipeID.split('-');
         const pipes = pipeStrings.map(str => {
             return {
@@ -310,9 +309,9 @@ class Organism {
     draw(ctx, firstPass = false) {
         const center = this.grid.hexToPixel(this.q, this.r);
         const size = this.grid.cellSize;
-        const display = document.getElementById('organism-display')?.value ?? true;
-        const pipe_show = document.getElementById('organism-pipes')?.value ?? true;
-        const endpoints = document.getElementById('endpoints')?.checked ?? true;
+        const display = UI.organismDisplay;
+        const pipe_show = UI.organismPipes;
+        const endpoints = UI.endpoints;
 
         const gridCell = this.grid.getCell(this.q, this.r);
         if (display === "black") {
@@ -383,7 +382,7 @@ class Organism {
         const angle = Math.PI / 3 * side + Math.PI / 6; // Angle to side midpoint
         // For flat-top hexagon, edge midpoint is at distance size * cos(30°) = size * sqrt(3)/2
         // Reduce slightly (0.85 instead of 0.866) to start just inside the edge
-        const edgeDistance = size * (0.8 + 0.1 * 2/3);
+        const edgeDistance = size * Math.cos(Math.PI / 6); // edge midpoint: size * sqrt(3)/2
         return {
             x: center.x + edgeDistance * Math.cos(angle),
             y: center.y + edgeDistance * Math.sin(angle)
@@ -456,9 +455,9 @@ class Organism {
             ctx.beginPath();
             ctx.arc(startPoint.x, startPoint.y, PARAMETERS.circleRadius, 0, Math.PI * 2);
             ctx.fill();
-            // ctx.strokeStyle = TEXT_COLOR;
-            // ctx.lineWidth = 1;
-            // ctx.stroke();
+            ctx.strokeStyle = TEXT_COLOR;
+            ctx.lineWidth = 1;
+            ctx.stroke();
         }
 
         // Only draw output indicator if outputCell is external (no organism)
@@ -484,6 +483,9 @@ class Organism {
             ctx.lineTo(baseX2, baseY2);
             ctx.closePath();
             ctx.fill();
+            ctx.strokeStyle = TEXT_COLOR;
+            ctx.lineWidth = 1;
+            ctx.stroke();
         }
     }
 
@@ -538,38 +540,7 @@ class Organism {
         ctx.stroke()
     }
 
-    /**
-     * Calculate point on quadratic bezier curve
-     */
-    bezierPoint(start, control, end, t) {
-        const x = (1-t)*(1-t)*start.x + 2*(1-t)*t*control.x + t*t*end.x;
-        const y = (1-t)*(1-t)*start.y + 2*(1-t)*t*control.y + t*t*end.y;
-        return {x, y};
-    }
 
-    /**
-     * Interpolate between two colors with gray in middle
-     */
-    interpolateColor(color1, color2, t) {
-        // Make middle (t=0.5) be gray (128, 128, 128)
-        if (t < 0.5) {
-            // Interpolate from color1 to gray
-            const s = t * 2; // 0 to 1
-            return {
-                R: color1.R * (1 - s) + pipe_mid_color.R * s,
-                G: color1.G * (1 - s) + pipe_mid_color.G * s,
-                B: color1.B * (1 - s) + pipe_mid_color.B * s
-            };
-        } else {
-            // Interpolate from gray to color2
-            const s = (t - 0.5) * 2; // 0 to 1
-            return {
-                R: pipe_mid_color.R * (1 - s) + color2.R * s,
-                G: pipe_mid_color.G * (1 - s) + color2.G * s,
-                B: pipe_mid_color.B * (1 - s) + color2.B * s
-            };
-        }
-    }
 
     baseType() {
         const pipes = this.copyPipes(this);

@@ -1,4 +1,6 @@
-const DEFAULT_PARAMETERS = {
+// `var`, not `const`, so the binding attaches to globalThis and runner.mjs can
+// read it after loading this file by indirect eval - conventions §0.
+var DEFAULT_PARAMETERS = {
     maxTicks: 200_000,
 
     // Framework parameters
@@ -46,60 +48,54 @@ const DEFAULT_PARAMETERS = {
     randomSeed: 0, // will be overriden
 
     enforceMaxEnergy: false,
-    taxPipeFlow: false,
     allowAttachments: true,
 };
 
 var PARAMETERS = structuredClone(DEFAULT_PARAMETERS);
 
-function loadParameters() {
-    // Load parameters from UI if available
-    PARAMETERS.name = document.getElementById("runName").value;
-    PARAMETERS.numOrganisms = parseInt(document.getElementById("numOrganisms").value);
-    PARAMETERS.mutationRate = parseFloat(document.getElementById("mutationRate").value);
-    PARAMETERS.reproductionThreshold = parseFloat(document.getElementById("reproductionThreshold").value);
-    PARAMETERS.deathRate = parseFloat(document.getElementById("deathRate").value);
-    PARAMETERS.starvationRate = parseFloat(document.getElementById("starvationRate").value);
-    PARAMETERS.starvationThreshold = parseFloat(document.getElementById("starvationThreshold").value);
-    PARAMETERS.k_diffusion = parseFloat(document.getElementById("k_diffusion").value);
-    PARAMETERS.k_pipe = parseFloat(document.getElementById("k_pipeFlow").value);
-    PARAMETERS.loss_rate = parseFloat(document.getElementById("lossRate").value);
-    PARAMETERS.gridRadius = parseInt(document.getElementById("gridRadius").value);
-    PARAMETERS.cellSize = parseInt(document.getElementById("cellSize").value);
-    PARAMETERS.enforceMaxEnergy = document.getElementById("enforceMaxEnergy").checked;
-    PARAMETERS.taxPipeFlow = document.getElementById("taxPipeFlow").checked;
-    {
-        let seed = parseInt(document.getElementById("randomSeed").value);
-        if (!seed) {
-            seed = Math.floor(Math.random() * 0xFFFF_FFFF);
-            document.getElementById("randomSeed").value = seed.toString();
-        }
+// The control panel is a read-only display of the run currently executing.
+// Parameters come from DEFAULT_PARAMETERS overlaid with the active `runs` entry
+// in main.js - not from these inputs. To drive a specific run, use replayRun()
+// or the ?seed= / ?run= query parameters (see main.js).
+function storeParameters() {
+    if (!HAS_DOM) return;
 
-        PARAMETERS.randomSeed = seed;
-    }
+    const set = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    const check = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = value;
+    };
 
-    // Could calculate dependent parameters here if needed
-
-    console.log("Parameters loaded:", PARAMETERS);
+    set("runName", PARAMETERS.name);
+    set("numOrganisms", PARAMETERS.numOrganisms);
+    set("mutationRate", PARAMETERS.mutationRate);
+    set("reproductionThreshold", PARAMETERS.reproductionThreshold);
+    set("deathRate", PARAMETERS.deathRate);
+    set("starvationRate", PARAMETERS.starvationRate);
+    set("starvationThreshold", PARAMETERS.starvationThreshold);
+    set("k_diffusion", PARAMETERS.k_diffusion);
+    set("k_pipeFlow", PARAMETERS.k_pipe);
+    set("lossRate", PARAMETERS.loss_rate);
+    set("gridRadius", PARAMETERS.gridRadius);
+    set("cellSize", PARAMETERS.cellSize);
+    set("randomSeed", PARAMETERS.randomSeed);   // .value, not .checked - this is
+                                                // the seed that replays the run
+    check("enforceMaxEnergy", PARAMETERS.enforceMaxEnergy);
 }
 
-function storeParameters() {
-    // store parameters to UI
-    document.getElementById("runName").value = PARAMETERS.name
-    document.getElementById("numOrganisms").value = PARAMETERS.numOrganisms
-    document.getElementById("mutationRate").value = PARAMETERS.mutationRate
-    document.getElementById("reproductionThreshold").value = PARAMETERS.reproductionThreshold
-    document.getElementById("deathRate").value = PARAMETERS.deathRate
-    document.getElementById("starvationRate").value = PARAMETERS.starvationRate
-    document.getElementById("starvationThreshold").value = PARAMETERS.starvationThreshold
-    document.getElementById("k_diffusion").value = PARAMETERS.k_diffusion
-    document.getElementById("k_pipeFlow").value = PARAMETERS.k_pipe
-    document.getElementById("lossRate").value = PARAMETERS.loss_rate
-    document.getElementById("gridRadius").value = PARAMETERS.gridRadius
-    document.getElementById("cellSize").value = PARAMETERS.cellSize
-    document.getElementById("enforceMaxEnergy").checked = PARAMETERS.enforceMaxEnergy
-    document.getElementById("taxPipeFlow").checked = PARAMETERS.taxPipeFlow
-    document.getElementById("randomSeed").checked = PARAMETERS.randomSeed
+// Grey the parameter inputs out. They report the running configuration; editing
+// them would silently do nothing, so they are disabled rather than misleading.
+function lockParameterPanel() {
+    if (!HAS_DOM) return;
+    const panel = document.getElementById("parameters");
+    if (!panel) return;
+    for (const el of panel.querySelectorAll("input, select")) {
+        el.disabled = true;
+        el.title = "Read-only: shows the running configuration. Use replayRun(seed) or ?seed=";
+    }
 }
 
 var BACKGROUND_COLOR = "#000000";

@@ -1,4 +1,6 @@
-class Histogram {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var Histogram = class Histogram {
     constructor(x, y, data, options) {
         this.x = x;
         this.y = y;

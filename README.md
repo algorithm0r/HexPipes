@@ -199,23 +199,53 @@ High density forces competition, starvation pressure drives adaptation
 ### Dependencies
 - **Vanilla JavaScript** (ES6+)
 - **HTML5 Canvas** for rendering
-- **Socket.io** (optional) for database logging
+- **Socket.io** (optional, vendored in `vender/`) for database logging
 - **Alea** Random number generator for seeded generation by Johannes Baagøe (`./alea.js`)
 - No build step required!
 
 ## 🧬 Configuration Space Analysis
 
-Run the Python scripts to explore the 933k configuration space:
+The 933k configuration space has **not** been enumerated yet — that analysis is
+planned, not written. What exists today is the taxonomy the analysis will use:
+`Organism.baseType()` reduces a configuration to a rotation-invariant base-5 /
+base-15 class, and `OrganismGraph` censuses the living population under eight
+colour/directionality/rotation equivalence relations at once.
+
+## 🖥️ Headless runs
+
+The same `src` files run without a browser — never a fork of the simulation core.
 
 ```bash
-python count_configs.py          # Enumerate and classify all configs
-python visualize_configs.py      # Generate heatmaps of energy vs diversity
+node runner.mjs                        # one Default run to maxTicks
+node runner.mjs --ticks 5000           # shorter
+node runner.mjs --run Connectivity     # a named run
+node runner.mjs --seed 424242          # reproduce a stored run
+node runner.mjs --reps 10 --json       # batch, machine-readable
+
+node smoketest.mjs                     # invariants; prints PASS/FAIL
 ```
 
-Creates visualizations showing:
-- Topology distribution (5 categories based on pipe angles)
-- Energy factor vs color diversity heatmap
-- Most common configuration types
+`smoketest.mjs` checks determinism first: the same seed must reproduce a run
+exactly. That is what makes a stored run replayable.
+
+## 🔁 Reproducing a stored run
+
+Every logged run records the `randomSeed` it executed under, alongside the full
+`PARAMETERS`. To replay one in the browser, either append the seed to the URL:
+
+```
+index.html?seed=424242&run=Connectivity
+```
+
+or call it from the console:
+
+```js
+replayRun(424242, { name: "Connectivity", allowAttachments: false })
+```
+
+The control panel is a **read-only** display of the configuration currently
+running — parameters come from `DEFAULT_PARAMETERS` overlaid with the active
+entry in the `runs` array in `main.js`.
 
 ## 🎓 Research Applications
 
@@ -237,14 +267,14 @@ Use browser DevTools to export console history for analysis.
 
 ## 🐛 Known Limitations
 
-- **Single-hex only**: Multi-hex organisms not yet implemented (though infrastructure exists)
-- **No speciation tracking**: Lineages not explicitly tracked (yet)
-- **Memory growth**: Long runs (100k+ ticks) may slow down due to graph tracking
-- **No serialization**: Can't save/load simulation state
-
-## 🎨 Autofeeder (Experimental)
-
-See `autofeeder.js` for a pre-designed 6-organism ring that creates a self-sustaining resource cycle. Perfect for testing flow mechanics without evolution.
+- **No cluster concept**: organisms *can* attach into multi-hex forms (offspring
+  placed adjacent when every touching side matches), but the code has no notion
+  of a cluster — they are still tracked as separate individuals, and cluster size
+  is not measured.
+- **No per-organism lineage**: parent→offspring edges are recorded, but the
+  click-to-trace-ancestry view is unfinished and disabled. See `lineage.js`.
+- **Memory growth**: long runs (100k+ ticks) slow down as the census grows.
+- **Analysis not written**: runs are stored but not yet classified.
 
 ## 📝 Citation
 

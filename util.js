@@ -1,14 +1,17 @@
-const color_bitmask = 1;
-const directionality_bitmask = 2;
-const rotation_bitmask = 4;
-const total_living_counts = 8;
-const base_5_living_index = color_bitmask | directionality_bitmask | rotation_bitmask;
-const base_15_living_index = color_bitmask | directionality_bitmask;
+// Top-level bindings here are `var`, not `const`: indirect-eval loading (see
+// runner.mjs) only carries `var` across file boundaries, which is what lets the
+// same src run in the browser and headless. Conventions §0.
+var color_bitmask = 1;
+var directionality_bitmask = 2;
+var rotation_bitmask = 4;
+var total_living_counts = 8;
+var base_5_living_index = color_bitmask | directionality_bitmask | rotation_bitmask;
+var base_15_living_index = color_bitmask | directionality_bitmask;
 
 function getLivingCountIndex() {
-    const ignore_color = document.getElementById('ignore-color').checked * color_bitmask;
-    const ignore_rotation = document.getElementById('ignore-rotation').checked * rotation_bitmask;
-    const ignore_directionality = document.getElementById('ignore-directionality').checked * directionality_bitmask;
+    const ignore_color = UI.ignoreColor * color_bitmask;
+    const ignore_rotation = UI.ignoreRotation * rotation_bitmask;
+    const ignore_directionality = UI.ignoreDirectionality * directionality_bitmask;
     return ignore_color + ignore_rotation + ignore_directionality;
 }
 
@@ -49,10 +52,38 @@ function parseHexColor(hex) {
     };
 }
 
+// Normalize a CSS color to "#rrggbb". Implemented directly rather than via a
+// throwaway <canvas>, so the color tables below can be built without a DOM and
+// the same util.js loads headless. Handles the two forms this project uses:
+// hsl(h, s%, l%) and #rrggbb.
 function standardizeColor(str) {
-    var ctx = document.createElement("canvas").getContext("2d");
-    ctx.fillStyle = str;
-    return ctx.fillStyle;
+    const s = String(str).trim();
+
+    if (s.startsWith("#")) return s.toLowerCase();
+
+    const m = s.match(/^hsl\(\s*([-\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)$/i);
+    if (!m) throw new Error(`standardizeColor: unsupported color "${str}"`);
+
+    const h = ((parseFloat(m[1]) % 360) + 360) % 360;
+    const sat = parseFloat(m[2]) / 100;
+    const light = parseFloat(m[3]) / 100;
+
+    // CSS Color 4 HSL -> RGB
+    const c = (1 - Math.abs(2 * light - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const lo = light - c / 2;
+
+    let rgb;
+    if (h < 60)       rgb = [c, x, 0];
+    else if (h < 120) rgb = [x, c, 0];
+    else if (h < 180) rgb = [0, c, x];
+    else if (h < 240) rgb = [0, x, c];
+    else if (h < 300) rgb = [x, 0, c];
+    else              rgb = [c, 0, x];
+
+    return "#" + rgb
+        .map((v) => Math.round((v + lo) * 255).toString(16).padStart(2, "0"))
+        .join("");
 }
 
 function download(filename, text) {
@@ -64,12 +95,14 @@ function download(filename, text) {
 
 
 function databaseConnected() {
+    if (!HAS_DOM) return;
     const dbDiv = document.getElementById("db");
     dbDiv.classList.remove("db-disconnected");
     dbDiv.classList.add("db-connected");
 }
 
 function databaseDisconnected() {
+    if (!HAS_DOM) return;
     const dbDiv = document.getElementById("db");
     dbDiv.classList.remove("db-connected");
     dbDiv.classList.add("db-disconnected");
@@ -146,7 +179,7 @@ async function concatUint8Arrays(uint8arrays) {
 ////// END OF CODE
 
 // Each bucket is a species which contains all of the possible rotations of that species.
-const base5Order = [
+var base5Order = [
     // 3 short
     ["0B1R-2B3R-4B5R", "0B5R-1B2R-3B4R"],
     // 2 long, 1 short
@@ -162,12 +195,12 @@ const base5Order = [
 function base15ColorFromIndex(i) {return `hsl(${i * 255.0 / 30.0}, 100%, 60.8%)`;}
 
 // buckets in order
-const base5Colors = [...[1, 9, 18, 25].map((index) => base15ColorFromIndex(index)), "#999999"];
-const base5ColorsRgb = base5Colors.map((color) => parseHexColor(standardizeColor(color)));
+var base5Colors = [...[1, 9, 18, 25].map((index) => base15ColorFromIndex(index)), "#999999"];
+var base5ColorsRgb = base5Colors.map((color) => parseHexColor(standardizeColor(color)));
 
 // should have the same structure as `base5order`
 
-const base15Colors = [...[0,2, 6,7,8,9,10,11, 16,18,20, 23,25,27].map((index) => base15ColorFromIndex(index)), "#999999"];
+var base15Colors = [...[0,2, 6,7,8,9,10,11, 16,18,20, 23,25,27].map((index) => base15ColorFromIndex(index)), "#999999"];
 
-const base15ColorsRgb = base15Colors.map((color) => parseHexColor(standardizeColor(color)));
+var base15ColorsRgb = base15Colors.map((color) => parseHexColor(standardizeColor(color)));
 

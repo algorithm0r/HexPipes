@@ -1,1 +1,5 @@
 todo.md
+
+# Large regenerable capture artifacts - rerun the sim and re-screenshot
+screenshots/
+*.bmp

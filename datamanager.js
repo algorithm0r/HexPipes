@@ -1,4 +1,6 @@
-class DataManager {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var DataManager = class DataManager {
     constructor(hexGrid) {
         this.hexGrid = hexGrid
 
@@ -61,7 +63,7 @@ class DataManager {
                 /*  width */ half_width,
                 /* height */ PARAMETERS.graphHeight,
                 /*   data */ [this.energyLostFromDeath, this.pipeFlowLoss],
-                /*  label */ "Energy loss (death red, flow tax orange)",
+                /*  label */ "Energy loss (death red; flow tax orange - always 0 since taxPipeFlow was removed)",
                 /*    min */ 0, /* no minimum */
                 /*    max */ 0, /* no maximum */
             )
@@ -357,7 +359,7 @@ class DataManager {
     }
 
     update() {
-        if (document.getElementById('pause').checked) return
+        if (UI.pause) return
         // Update data every tick (not just on reporting periods)
         if(this.hexGrid.tick % PARAMETERS.reportingPeriod === 0) {
             this.updateData()

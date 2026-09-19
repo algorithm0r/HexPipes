@@ -1,7 +1,9 @@
 // This game shell was happily copied from Googler Seth Ladd's "Bad Aliens" game and his Google IO talk in 2011
 "use strict";
 
-class Timer {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var Timer = class Timer {
     constructor() {
         this.gameTime = 0;
         this.maxStep = 1;
@@ -32,7 +34,9 @@ class Timer {
     }
 };
 
-class GameEngine {
+// `var X = class X` (not a bare class declaration) so the binding attaches to
+// globalThis and the same file loads in the browser AND headless - conventions §0.
+var GameEngine = class GameEngine {
     constructor() {
         this.entities = [];
         this.graphs = [];
@@ -71,7 +75,7 @@ class GameEngine {
     }
 
     input(event) {
-        if (event.target === document.getElementById('gameWorld') && event.button === 0) {
+        if (HAS_DOM && event.target === document.getElementById('gameWorld') && event.button === 0) {
             this.click = {
                 x: event.layerX,
                 y: event.layerY
@@ -88,7 +92,7 @@ class GameEngine {
     }
 
     draw() {
-        if (!document.getElementById("draw-each-tick").checked
+        if (!UI.drawEachTick
             && this.hexGrid.tick % PARAMETERS.ticksPerDraw != 1) return;
 
         // Clear the entire canvas
@@ -122,8 +126,14 @@ class GameEngine {
     }
 
     loop() {
+        // One DOM read per frame; the sim reads UI.* and never the DOM itself.
+        syncUI();
+
         this.clockTick = this.timer.tick();
-        document.getElementById('frameRate').textContent = `Frame Rate: ${this.timer.ticks.length} Tick: ${this.clockTick.toFixed(3)}`;
+        if (HAS_DOM) {
+            const fr = document.getElementById('frameRate');
+            if (fr) fr.textContent = `Frame Rate: ${this.timer.ticks.length} Tick: ${this.clockTick.toFixed(3)}`;
+        }
         let loops = PARAMETERS.updatesPerTick;
         while (loops-- > 0) this.update();
 
