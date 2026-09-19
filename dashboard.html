@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Hex Pipes Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="./style.css"></link>
+
+    <script type="text/javascript" src="./vender/socket.io.js"></script>
+
+    <script type="text/javascript" src="./util.js"></script>
+    <script type="text/javascript" src="./params.js"></script>
+    <script type="text/javascript" src="./histogram.js"></script>
+    <script type="text/javascript" src="./graph.js"></script>
+    <script type="text/javascript" src="./hexgrid.js"></script>
+    <script type="text/javascript" src="./organism.js"></script>
+    <script type="text/javascript" src="./organismgraph.js"></script>
+    <script type="text/javascript" src="./datamanager.js"></script>
+    <script type="text/javascript" src="./dashboard.js"></script>
+</head>
+<body>
+
+    <canvas id="dashboard" tabindex="1" width="1600" height="1200" style="background: #181A1B"></canvas><br />
+    <div id="options">
+        <div id="db" class="db-status">Database</div><br />
+
+        <label for="collection-name">Database collection name</label>
+        <input type="text" id="collection-name"/><button id="collection-name-search">Search</button><br /><br />
+
+        <label for="run-selection">Run Name:</label>
+        <select id="run-selection" name="run-selection"></select><br /><br />
+        <button id="prev-run">Prev Run</button> <button id="next-run">Next Run</button> <button id="jump-page">Jump Page</button> <br />
+        <input type="number" id="jump-to-amount" value="0" /> <button id="jump-to">Jump To</button> <br />
+        <button id="request-all-the-data-please">Request All The Data Please</button> <br />
+        <input type="checkbox" id="play-them-all-one-by-one" name="play-them-all-one-by-one" />
+        <label for="play-them-all-one-by-one">Play Them All One By One</label><br />
+
+        <div id="requesting-info"></div><br />
+        <div id="query-info">Awaiting Run Names</div><br /><br />
+
+        <div id="entry-count">total entries: ?</div><br />
+
+        <h3>Graph Settings</h3>
+
+        <input type="checkbox" id="ignore-color" oninput="draw()" checked/>
+        <label for="ignore-color">Ignore colors</label><br />
+
+        <input type="checkbox" id="ignore-directionality" oninput="draw()" checked />
+        <label for="ignore-directionality">Ignore Directionality (which way the pipes point)</label><br />
+
+        <input type="checkbox" id="ignore-rotation" oninput="draw()" />
+        <label for="ignore-rotation">Ignore Rotation</label><br />
+
+        <input type="checkbox" id="sort-top-orgs" oninput="draw()" />
+        <label for="sort-top-orgs">Sort top organisms (only applicable to base 5 and 15)</label><br />
+        <br />
+
+        <h3>Grid Settings</h3>
+
+        <input type="checkbox" id="cell-draw-red" oninput="draw()" />
+        <label for="cell-draw-red">Draw Red</label><br />
+
+        <input type="checkbox" id="cell-draw-green" oninput="draw()" />
+        <label for="cell-draw-green">Draw Green</label><br />
+
+        <input type="checkbox" id="cell-draw-blue" oninput="draw()" />
+        <label for="cell-draw-blue">Draw Blue</label><br />
+
+        <label for="organism-display">Display Organism:</label>
+        <select id="organism-display" onclick="draw()">
+            <option value="grey">Grey</option>
+            <option value="base5">Base 5 Type</option>
+            <option value="base15" selected>Base 15 Type</option>
+            <option value="black">Black</option>
+            <option value="energy">Energy</option>
+        </select> <br />
+
+        <label for="organism-pipes">Display Organism Pipes:</label>
+        <select id="organism-pipes" onclick="draw()">
+            <option value="none" selected>None</option>
+            <option value="color">Color</option>
+            <option value="flow">Flow</option>
+        </select> <br />
+
+        <input type="checkbox" id="endpoints" onclick="draw()" />
+        <label for="endpoints">Show Endpoints</label><br />
+
+        <br />
+
+        <h3>Time</h3>
+
+        <label for="timeframe">The tick to show the state of board</label><br />
+        <input
+            type="range"
+            id="timeframe"
+            name="timeframe"
+            min="0"
+            max="0"
+            value="0"
+            step="0"
+            ononclick="timeframeUpdated()" />
+        <label for="timeframe" id="timeframe-value"></label>
+        <br /><br />
+
+        <input type="checkbox" id="timeframe-play"/>
+        <label for="timeframe-play">Play Animation</label><br />
+
+        <label for="timeframe-fps">Board framerate</label><br />
+        <input type="range"
+               id="timeframe-fps"
+               name="timeframe-fps"
+               min="1"
+               max="60"
+               value="60"
+               step="0"
+               ononclick="timeframeFpsUpdated()" />
+        <label for="timeframe" id="timeframe-fps-value">fps: 60</label>
+        <br />
+
+        <input type="button"
+               id="record"
+               name="record"
+               onclick="recordData()" />
+        <label for="record">Record</label>
+
+        <h3>Statistics</h3>
+        <div id="stats"></div>
+    </div>
+
+</body>
+</html>

@@ -1,16 +1,5 @@
 // This game shell was happily copied from Googler Seth Ladd's "Bad Aliens" game and his Google IO talk in 2011
-
-window.requestAnimFrame = (function () {
-    return window.requestAnimationFrame ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame ||
-            window.oRequestAnimationFrame ||
-            window.msRequestAnimationFrame ||
-            function (/* function */ callback, /* DOMElement */ element) {
-                window.setTimeout(callback, 1000 / 60);
-            };
-})();
-
+"use strict";
 
 class Timer {
     constructor() {
@@ -19,12 +8,13 @@ class Timer {
         this.wallLastTimestamp = 0;
         this.ticks = [];
     }
+
     tick() {
-        var wallCurrent = performance.now();
-        var wallDelta = (wallCurrent - this.wallLastTimestamp) / 1000;
+        let wallCurrent = performance.now();
+        let wallDelta = (wallCurrent - this.wallLastTimestamp) / 1000;
         this.wallLastTimestamp = wallCurrent;
 
-        var gameDelta = Math.min(wallDelta, this.maxStep);
+        let gameDelta = Math.min(wallDelta, this.maxStep);
         this.gameTime += gameDelta;
 
         this.ticks.push(wallDelta);
@@ -42,7 +32,6 @@ class Timer {
     }
 };
 
-
 class GameEngine {
     constructor() {
         this.entities = [];
@@ -50,87 +39,96 @@ class GameEngine {
         this.ctx = null;
         this.surfaceWidth = null;
         this.surfaceHeight = null;
+        this.click = null;
     }
+
     init(ctx) {
         this.ctx = ctx;
         this.surfaceWidth = this.ctx.canvas.width;
         this.surfaceHeight = this.ctx.canvas.height;
         this.timer = new Timer();
-        this.startInput();
     }
-    start() {
-        console.log("starting game");
-        var that = this;
-        (function gameLoop() {
-            that.loop();
-            requestAnimFrame(gameLoop, that.ctx.canvas);
-        })();
-    }
-    startInput() {
-        const cellWidth = PARAMETERS.pixelDimension / PARAMETERS.numCols;
-        const cellHeight = PARAMETERS.pixelDimension / PARAMETERS.numRows;
 
-        function getXY(event) {
-            return { 
-                col: Math.floor(event.x / cellWidth),
-                row: Math.floor(event.y / cellHeight)
-            }
-        }
-        this.ctx.canvas.addEventListener('click', (event) => {
-            this.click = getXY(event);
-        });
+    stop() {
+        if (this.timeout) clearInterval(this.timeout);
     }
+
+    start() {
+        console.log("starting game", PARAMETERS.name);
+        let that = this;
+        const timeout_func = function gameLoop() {
+            that.loop();
+
+            const everything_dead = that.hexGrid.tick > PARAMETERS.addOrganismsOnTick * 2
+                                        && that.hexGrid.organisms.length == 0;
+
+            if (everything_dead || that.hexGrid.tick >= PARAMETERS.maxTicks) {
+                reset();
+            }
+        };
+
+        this.timeout = setInterval(timeout_func);
+    }
+
+    input(event) {
+        if (event.target === document.getElementById('gameWorld') && event.button === 0) {
+            this.click = {
+                x: event.layerX,
+                y: event.layerY
+            };
+        }
+    }
+
     addEntity(entity) {
         this.entities.push(entity);
     }
+
     addGraph(graph) {
         this.graphs.push(graph);
     }
+
     draw() {
+        if (!document.getElementById("draw-each-tick").checked
+            && this.hexGrid.tick % PARAMETERS.ticksPerDraw != 1) return;
+
         // Clear the entire canvas
         this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-        
+
+        this.hexGrid.draw(this.ctx);
+
         // Draw all entities
-        for (var i = 0; i < this.entities.length; i++) {
+        for (let i = 0; i < this.entities.length; i++) {
             this.entities[i].draw(this.ctx);
         }
-        
-        // Draw all graphs
-        for (var i = 0; i < this.graphs.length; i++) {
-            this.graphs[i].draw(this.ctx);
-        }
     }
-    update() {
-        var entitiesCount = this.entities.length;
 
-        for (var i = 0; i < entitiesCount; i++) {
-            var entity = this.entities[i];
+    update() {
+        this.hexGrid.update();
+        let entitiesCount = this.entities.length;
+
+        for (let i = 0; i < entitiesCount; i++) {
+            let entity = this.entities[i];
 
             if (!entity.removeFromWorld) {
                 entity.update();
             }
         }
 
-        for (var i = this.entities.length - 1; i >= 0; --i) {
+        for (let i = this.entities.length - 1; i >= 0; --i) {
             if (this.entities[i].removeFromWorld) {
                 this.entities.splice(i, 1);
             }
         }
     }
+
     loop() {
         this.clockTick = this.timer.tick();
         document.getElementById('frameRate').textContent = `Frame Rate: ${this.timer.ticks.length} Tick: ${this.clockTick.toFixed(3)}`;
-        var loops = PARAMETERS.updatesPerDraw;
+        let loops = PARAMETERS.updatesPerTick;
         while (loops-- > 0) this.update();
+
         this.draw();
         this.click = null;
     }
 };
-
-
-
-
-
-
-
 

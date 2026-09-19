@@ -99,7 +99,7 @@ body {
     border: 1px solid black;
     text-align: center;
     padding: 5px;
-    margin-bottom: 8px; /* Reduced spacing */    
+    margin-bottom: 8px; /* Reduced spacing */
     margin-left: 100px; /* Reduced spacing */
     margin-right: 100px; /* Reduced spacing */
     font-size: 12px; /* Smaller font */
@@ -174,9 +174,9 @@ body {
     background-color: darkkhaki;
     text-align: center;
     padding: 5px;
-    margin-bottom: 8px;    
-    margin-left: 100px; 
-    margin-right: 100px; 
-    font-size: 12px; 
+    margin-bottom: 8px;
+    margin-left: 100px;
+    margin-right: 100px;
+    font-size: 12px;
 }
 

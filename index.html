@@ -4,36 +4,40 @@
 <head>
     <meta charset="utf-8">
     <title>Hex Pipes</title>
-    <link rel="stylesheet" type="text/css" href="./style.css">
-    </link>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.1/socket.io.js"></script>
+    <link rel="stylesheet" type="text/css" href="./style.css"></link>
+
+    <script type="text/javascript" src="./vender/socket.io.js"></script>
+    <script type="text/javascript" src="./vender/alea.js"></script>
+
+    <script type="text/javascript" src="./util.js"></script>
     <script type="text/javascript" src="./assetmanager.js"></script>
     <script type="text/javascript" src="./histogram.js"></script>
     <script type="text/javascript" src="./graph.js"></script>
     <script type="text/javascript" src="./gameengine.js"></script>
-    <script type="text/javascript" src="./util.js"></script>
     <script type="text/javascript" src="./params.js"></script>
     <script type="text/javascript" src="./hexgrid.js"></script>
     <script type="text/javascript" src="./datamanager.js"></script>
     <script type="text/javascript" src="./organism.js"></script>
     <script type="text/javascript" src="./organismgraph.js"></script>
+    <script type="text/javascript" src="./lineage.js"></script>
     <script type="text/javascript" src="./main.js"></script>
 </head>
 
 <body>
-    <canvas id="gameWorld" width="1600" height="1000"></canvas>
+    <canvas id="gameWorld" width="1600" height="1600" style="background: #181A1B"></canvas>
     <div id="controlPanel">
         <div id="db" class="db-status">Database</div>
         <div id="frameRate" class="frame-rate">Tick</div>
         <div id="parameters">
-
             <div class="parameter-section">
+                <label for="runName">Run Name:</label>
+                <input type="string" id="runName" value="Experiment" />
                 <label for="numOrganisms">Initial Organisms:</label>
                 <input type="number" id="numOrganisms" value="30" min="1" max="500" step="1" />
                 <label for="gridRadius">Hexagon Grid Radius:</label>
-                <input type="number" id="gridRadius" value="25" min="1" max="50" step="1" />
+                <input type="number" id="gridRadius" value="16" min="1" max="50" step="1" />
                 <label for="cellSize">Hexagon Cell Size:</label>
-                <input type="number" id="cellSize" value="12" min="8" max="20" step="1" />
+                <input type="number" id="cellSize" value="16" min="8" max="20" step="1" />
                 <label for="k_diffusion">Diffusion Rate:</label>
                 <input type="number" id="k_diffusion" value="0.15" min="0" max="0.16" step="0.01" />
                 <label for="k_pipeFlow">Pipe Flow Rate:</label>
@@ -50,6 +54,12 @@
                 <input type="number" id="starvationRate" value="0.5" min="0" max="1" step="0.01" />
                 <label for="starvationThreshold">Starvation Threshold (% of reproductionThreshold):</label>
                 <input type="number" id="starvationThreshold" value="0.01" min="0" max="1" step="0.001" />
+                <label for="randomSeed">Random Seed (doesn't yet work):</label>
+                <input type="number" id="randomSeed" value="" placeholder="none", min="0", max="0xFFFF_FFFF", step="1" autocomplete="off"/>
+                <label for="enforceMaxEnergy">Enforce Max Energy:</label>
+                <input type="checkbox" id="enforceMaxEnergy" />
+                <label for="taxPipeFlow">Tax pipe flow (unimplemented):</label>
+                <input type="checkbox" id="taxPipeFlow" />
 
                 <div id="orggraph">Ticks: 0 <br/> Total Organisms: 0 <br/> Max Count: 0<br/> Map Size: 0</div>
             </div>
@@ -58,22 +68,58 @@
         </div>
 
         <div id="options">
-            <input type="checkbox" id="red" checked />
-            <label for="red">Draw Red</label><br />
+            <input type="checkbox" id="pause" />
+            <label for="pause">Pause</label><br />
 
-            <input type="checkbox" id="green" checked />
-            <label for="green">Draw Green</label><br />
+            <input type="checkbox" id="draw-each-tick" />
+            <label for="draw-each-tick" checked="true">draw each tick</label><br />
 
-            <input type="checkbox" id="blue" checked />
-            <label for="blue">Draw Blue</label><br />
+            <h3>Grid Settings</h3>
 
-            <input type="checkbox" id="flow" checked />
-            <label for="flow">Show Flow</label><br />
+            <input type="checkbox" id="cell-draw-red" />
+            <label for="cell-draw-red">Draw Red</label><br />
 
-            <input type="checkbox" id="endpoints" checked />
+            <input type="checkbox" id="cell-draw-green" />
+            <label for="cell-draw-green">Draw Green</label><br />
+
+            <input type="checkbox" id="cell-draw-blue" />
+            <label for="cell-draw-blue">Draw Blue</label><br />
+
+            <label for="organism-display">Display Organism:</label>
+            <select id="organism-display">
+                <option value="grey">Grey</option>
+                <option value="base5">Base 5 Type</option>
+                <option value="base15" selected>Base 15 Type</option>
+                <option value="black">Black</option>
+                <option value="energy">Energy</option>
+            </select> <br />
+
+            <label for="organism-pipes">Display Organism Pipes:</label>
+            <select id="organism-pipes">
+                <option value="none" selected>None</option>
+                <option value="color">Color</option>
+                <option value="flow">Flow</option>
+            </select> <br />
+
+            <input type="checkbox" id="endpoints" />
             <label for="endpoints">Show Endpoints</label><br />
+
+            <h3>Graph Settings</h3>
+
+            <input type="checkbox" id="ignore-color" checked/>
+            <label for="ignore-color">Ignore colors</label><br />
+
+            <input type="checkbox" id="ignore-directionality" checked />
+            <label for="ignore-directionality">Ignore Directionality (which way the pipes point)</label><br />
+
+            <input type="checkbox" id="ignore-rotation" />
+            <label for="ignore-rotation">Ignore Rotation</label><br />
+
+            <input type="checkbox" id="sort-top-orgs" />
+            <label for="sort-top-orgs">Sort top organisms (only applicable to base 5 and 15)</label><br />
         </div>
     </div>
+    <canvas id="lineage" width="1600" height="500"></canvas>
 </body>
 
 </html>

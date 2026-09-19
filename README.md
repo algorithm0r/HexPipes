@@ -1,10 +1,17 @@
 # Hex Pipes: Evolutionary Artificial Life Simulation
 
-An evolutionary artificial life system where single-hex organisms extract energy from flowing colored resources through configurable pipe networks. Watch populations adapt and evolve in real-time as metabolic configurations compete for survival.
+An evolutionary artificial life system where single-hex organisms extract
+energy from flowing colored resources through configurable pipe networks. Watch
+populations adapt and evolve in real-time as metabolic configurations compete
+for survival.
 
 ## 🎯 Core Concept
 
-**Organisms** are single hexagons with **3 one-way pipes** that process colored resources (R, Y, G, C, B, M). Each pipe connects two of the hex's 6 sides, pulling resources in and pushing them out. Energy is gained from color conversions (larger color distances = more energy). When organisms reach 100 energy, they reproduce with mutations, creating evolutionary dynamics.
+**Organisms** are single hexagons with **3 one-way pipes** that process
+colored resources (R, Y, G, C, B, M). Each pipe connects two of the hex's 6
+sides, pulling resources in and pushing them out. Energy is gained from color
+conversions (larger color distances = more energy). When organisms reach 100
+energy, they reproduce with mutations, creating evolutionary dynamics.
 
 ## ✨ Key Features
 
@@ -16,7 +23,7 @@ An evolutionary artificial life system where single-hex organisms extract energy
 
 ### Organism Metabolism
 - **Pipe Networks**: Each organism has 3 pipes connecting pairs of its 6 sides
-- **Color Processing**: 
+- **Color Processing**:
   - Primaries (R, G, B): Pull single RGB channel
   - Secondaries (Y, C, M): Pull TWO channels (limited by minimum)
 - **Chain Flow**: Organisms connect output→input forming metabolic chains
@@ -55,7 +62,7 @@ An evolutionary artificial life system where single-hex organisms extract energy
 ### Real-Time Visualization
 - **Hex Grid**: Colorful diffusion from edges (toggle R/G/B channels)
 - **Organisms**: Black hexagons with colored curved pipes
-- **Flow Indicators**: 
+- **Flow Indicators**:
   - Green intensity shows flow amount (toggle on/off)
   - Input: Filled circle (●) at pulling end
   - Output: Arrow triangle (▶) at pushing end
@@ -127,7 +134,7 @@ If even one side mismatches → placement rejected. This ensures clean multi-org
 ### Performance
 - **Default Setup** (radius 25, 30 organisms): ~60 FPS, 1981 grid cells
 - **Large Setup** (radius 40, 100 organisms): ~30 FPS, 5041 grid cells
-- Scales well to 500+ organisms if you reduce `updatesPerDraw` or increase `reportingPeriod`
+- Scales well to 500+ organisms if you reduce `updatesPerTick` or increase `reportingPeriod`
 
 ## 🚀 Quick Start
 
@@ -193,6 +200,7 @@ High density forces competition, starvation pressure drives adaptation
 - **Vanilla JavaScript** (ES6+)
 - **HTML5 Canvas** for rendering
 - **Socket.io** (optional) for database logging
+- **Alea** Random number generator for seeded generation by Johannes Baagøe (`./alea.js`)
 - No build step required!
 
 ## 🧬 Configuration Space Analysis

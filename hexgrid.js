@@ -3,20 +3,20 @@ class HexGrid {
         // Grid parameters
         this.radius = PARAMETERS.gridRadius;
         this.cellSize = PARAMETERS.cellSize;
-                
+
         this.tick = 0;
 
         // Axial coordinate direction offsets for the 6 neighbors (flat-top orientation)
         // Ordered to match visual edge angles: 30°, 90°, 150°, 210°, 270°, 330°
         this.directions = [
-            {q: +1, r:  0},  // Side 0: 30° 
+            {q: +1, r:  0},  // Side 0: 30°
             {q:  0, r: +1},  // Side 1: 90°
             {q: -1, r: +1},  // Side 2: 150°
             {q: -1, r:  0},  // Side 3: 210°
             {q:  0, r: -1},  // Side 4: 270°
             {q: +1, r: -1},  // Side 5: 330°
         ];
-        
+
         // 6-color wheel (RGB combinations)
         this.colorWheel = [
             {name: 'R', R: 255, G: 0,   B: 0},    // Red
@@ -26,41 +26,58 @@ class HexGrid {
             {name: 'B', R: 0,   G: 0,   B: 255},  // Blue
             {name: 'M', R: 255, G: 0,   B: 255},  // Magenta (R+B)
         ];
-        
+
         // Cell storage using Map with "q,r" string keys
         this.cells = new Map();
-        
+
         // Organism storage
         this.organisms = [];
-        
+        this.starvationDeaths = [];
+        this.randomDeaths = [];
+
+        this.pipeFlowLoss = 0.0;
+        this.chains = [];
+
         // Initialize the hex grid
         this.initializeGrid();
 
         this.organismGraph = new OrganismGraph(this);
+
         this.dataManager = new DataManager(this);
-        gameEngine.addEntity(this.dataManager);
+        window.gameEngine?.addEntity(this.dataManager);
     }
-    
+
+    resetCells() {
+        this.organisms.length = 0
+        this.organismGraph = new OrganismGraph()
+        for (let [pos, gridCell] of this.cells) {
+            gridCell.organism = null;
+            gridCell.R = 0;
+            gridCell.G = 0;
+            gridCell.B = 0;
+        }
+    }
+
     /**
      * Determine which edge (0-5) a cell belongs to, or -1 if not on edge
      * Edges correspond to the 6 sides of the hex
      */
     getEdgeIndex(q, r) {
         if (!this.isEdge(q, r)) return -1;
-        
+
         // Determine which edge by checking which coordinate is maxed out
         const s = -q - r; // Third cube coordinate
-        
+
         if (q === this.radius && r <= 0) return 0;      // East edge
         if (r === -this.radius && s >= 0) return 1;     // Northeast edge
         if (s === this.radius && q <= 0) return 2;      // Northwest edge
         if (q === -this.radius && r >= 0) return 3;     // West edge
         if (r === this.radius && s <= 0) return 4;      // Southwest edge
         if (s === -this.radius && q >= 0) return 5;     // Southeast edge
-        
+
         return -1; // Shouldn't happen
     }
-    
+
     /**
      * Initialize all cells in a hexagonal shape
      */
@@ -71,7 +88,7 @@ class HexGrid {
                     const key = this.key(q, r);
                     const edgeIndex = this.getEdgeIndex(q, r);
                     const isSource = edgeIndex !== -1;
-                    
+
                     let R = 0, G = 0, B = 0;
                     if (isSource) {
                         // Assign color based on which edge this cell is on
@@ -80,7 +97,7 @@ class HexGrid {
                         G = color.G;
                         B = color.B;
                     }
-                    
+
                     // Create cell with only RGB channels
                     this.cells.set(key, {
                         q: q,
@@ -96,25 +113,25 @@ class HexGrid {
         }
         console.log(`Grid initialized with ${this.cells.size} cells`);
     }
-    
+
     /**
      * Spawn multiple test organisms for testing
      */
     spawnTestOrganisms() {
         const numOrganisms = PARAMETERS.numOrganisms;
-        
+
         for (let i = 0; i < numOrganisms; i++) {
             // Try to find a legal placement
             let q, r;
             let attempts = 0;
             do {
                 // Random position in interior (not edges)
-                q = Math.floor(Math.random() * (2 * (this.radius - 1) + 1)) - (this.radius - 1);
-                r = Math.floor(Math.random() * (2 * (this.radius - 1) + 1)) - (this.radius - 1);
+                q = Math.floor(arng.double() * (2 * (this.radius - 1) + 1)) - (this.radius - 1);
+                r = Math.floor(arng.double() * (2 * (this.radius - 1) + 1)) - (this.radius - 1);
                 attempts++;
                 if (attempts > 100) break; // Safety check
             } while (!this.isLegalPlacement(q, r));
-            
+
             if (this.isLegalPlacement(q, r)) {
                 const organism = new Organism(this);
                 organism.placeInGrid(q, r);
@@ -123,10 +140,10 @@ class HexGrid {
                 this.organismGraph.addOrganism(organism);
             }
         }
-        
+
         console.log(`Total organisms spawned: ${this.organisms.length}`);
     }
-    
+
     /**
      * Check if a cell is a legal placement for a new organism
      * Rules: not on edges, not touching another organism
@@ -136,13 +153,13 @@ class HexGrid {
         if (!this.isInBounds(q, r) || this.isEdge(q, r)) {
             return false;
         }
-        
+
         // Cell itself must not have an organism
         const cell = this.getCell(q, r);
         if (cell.organism) {
             return false;
         }
-        
+
         // None of the neighbors can have an organism (no touching)
         const neighbors = this.getNeighbors(q, r);
         for (const neighbor of neighbors) {
@@ -150,15 +167,15 @@ class HexGrid {
                 return false;
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * Check if placing offspring at (q, r) is valid - ALL touching pipes must match
      * Returns information about which adjacent organisms could merge
      * @param {number} q - axial coordinate
-     * @param {number} r - axial coordinate  
+     * @param {number} r - axial coordinate
      * @param {Organism} newOrganism - the organism trying to reproduce
      * @returns {Object} - {canMerge: bool, adjacentOrganisms: [...], matchingConnections: [...]}
      */
@@ -167,13 +184,13 @@ class HexGrid {
         if (!this.isInBounds(q, r) || this.isEdge(q, r)) {
             return false;
         }
-        
+
         // Cell itself must not have an organism
         const cell = this.getCell(q, r);
         if (cell.organism) {
             return false;
         }
-        
+
         // None of the neighbors can have an organism (no touching)
         const neighbors = this.getNeighbors(q, r);
         for (const neighbor of neighbors) {
@@ -181,23 +198,23 @@ class HexGrid {
                 return false;
             }
         }
-        
+
         // Check each of the 6 sides of the potential placement
         for (let side = 0; side < 6; side++) {
             const neighbor = newOrganism.getNeighborOnSide(q, r, side);
-            
+
             // Skip if no neighbor or neighbor has no organism
             if (!neighbor || !neighbor.organism) continue;
-            
+
             const neighborOrganism = neighbor.organism;
             const oppositeSide = (side + 3) % 6;  // Opposite side on hexagon
-            
+
             // connecting pipes on this side
             const newOrganismPipe = newOrganism.sideToPipe[side];
             const neighborOrganismPipe = neighborOrganism.sideToPipe[oppositeSide];
 
             let newOrgColor;
-            let neighborOrgColor;   
+            let neighborOrgColor;
             let newOrgConnect;
             let neighborOrgConnect;
 
@@ -230,7 +247,7 @@ class HexGrid {
         }
         return true; // All touching pipes match
     }
-    
+
     /**
      * Get all cells within a given radius of a position
      */
@@ -250,35 +267,35 @@ class HexGrid {
         }
         return cells;
     }
-    
+
     /**
      * Generate string key for a cell coordinate
      */
     key(q, r) {
         return `${q},${r}`;
     }
-    
+
     /**
      * Check if coordinate is within hex-shaped bounds
      */
     isInBounds(q, r) {
         return Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) <= this.radius;
     }
-    
+
     /**
      * Check if coordinate is on the edge of the hex grid
      */
     isEdge(q, r) {
         return Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === this.radius;
     }
-    
+
     /**
      * Get cell at coordinate (q, r)
      */
     getCell(q, r) {
         return this.cells.get(this.key(q, r));
     }
-    
+
     /**
      * Get all neighbors of cell at (q, r)
      */
@@ -293,22 +310,26 @@ class HexGrid {
         }
         return neighbors;
     }
-    
+
     /**
      * Main update function called by game engine
      */
     update() {
+        this.updateLineage()
+
+        if (document.getElementById('pause').checked) return;
+
         this.tick++;
         // Step 1: Diffusion
         this.diffuse();
-        
+
         // Step 2: Organism pipe flows
         // Spawn test organisms
         if(this.tick === PARAMETERS.addOrganismsOnTick)
             this.spawnTestOrganisms();
 
         this.processPipes();
-        
+
         // Step 3: Reproduction (must happen after all organisms update)
         const newOrganisms = [];
         for (const organism of this.organisms) {
@@ -319,56 +340,78 @@ class HexGrid {
             }
         }
         this.organisms.push(...newOrganisms);
-        
-        // Step 4: Death (lightning bolt)
+
+        // Step 4: Death (lightning bolt or starvation)
         this.organisms = this.organisms.filter(organism => {
-            if (Math.random() < PARAMETERS.deathRate || 
-                (organism.energy < PARAMETERS.reproductionThreshold * PARAMETERS.starvationThreshold && Math.random() < PARAMETERS.starvationRate)) {
+            const starved = (organism.energy < PARAMETERS.reproductionThreshold * PARAMETERS.starvationThreshold && arng.double() < PARAMETERS.starvationRate);
+            const random = arng.double() < PARAMETERS.deathRate;
+            if (starved || random) {
                 // Clear organism from cell
                 const gridCell = this.getCell(organism.q, organism.r);
                 gridCell.organism = null;
-                // console.log(`⚡ Organism died at (${organism.q}, ${organism.r})`);
+                gridCell.R = 0;
+                gridCell.G = 0;
+                gridCell.B = 0;
+
+                if (starved) {
+                    this.starvationDeaths.push(organism);
+                } else if (random) {
+                    this.randomDeaths.push(organism);
+                }
+
                 return false; // Remove from array
             }
             return true; // Keep in array
         });
 
         // get unique living organism IDs
-        const livingIDs = this.organisms.map(org => org.organismID());
-        this.organismGraph.updateLivingOrganisms(livingIDs);
-        this.organismGraph.updateHTML();
+        this.organismGraph.update(this.organisms);
     }
-    
+
+    updateLineage() {
+        // TODO(Elijah): Fix lineages to re-enable this function.
+        return;
+        // if (!gameEngine.click) return;
+        // const pos = this.pixelToHex(gameEngine.click.x, gameEngine.click.y);
+        // if (!pos) return;
+        // const wanted_key = this.key(pos.q, pos.r);
+
+        // const cell = this.cells.get(wanted_key);
+        // if (!cell || !cell.organism) return;
+        // console.log(cell);
+        // this.lineage = cell;
+    }
+
     /**
      * Perform diffusion step with calculate and update passes
      */
     diffuse() {
         const colors = ['R', 'G', 'B'];
-        
+
         // CALCULATE PASS - compute all flows without modifying cells
         const flows = new Map();
-        
+
         for (const [key, cell] of this.cells) {
             // Skip sources and cells with organisms
             if (cell.isSource || cell.organism) continue;
-            
+
             const neighbors = this.getNeighbors(cell.q, cell.r);
             const cellFlows = {R: 0, G: 0, B: 0};
-            
+
             // Calculate flow from each neighbor
             for (const neighbor of neighbors) {
                 // Only diffuse from cells without organisms
                 if (neighbor.organism) continue;
-                
+
                 for (const color of colors) {
                     const flow = PARAMETERS.k_diffusion * (neighbor[color] - cell[color]);
                     cellFlows[color] += flow;
                 }
             }
-            
+
             flows.set(key, cellFlows);
         }
-        
+
         // UPDATE PASS - apply all flows simultaneously
         for (const [key, cellFlows] of flows) {
             const cell = this.cells.get(key);
@@ -380,7 +423,7 @@ class HexGrid {
             }
         }
     }
-    
+
     /**
      * Process all pipe flows for organisms
      */
@@ -394,7 +437,10 @@ class HexGrid {
                 }
             }
         }
-        
+
+        this.chains.push(...chains);
+
+        // TODO(Elijah): groups here
         // place chains in groups with the same source
         const groups = [];
         for (let i = 0; i < chains.length; i++) {
@@ -478,13 +524,24 @@ class HexGrid {
                 // compute pipe energy gain
                 const pipe = step.pipe;
                 const pipeFactor = this.calculateColorDistance(pipe.inputColor, pipe.outputColor) / 3;
+
                 pipe.flow = remainingFlow;
+                if (PARAMETERS.taxPipeFlow) {
+                    const loss = pipe.flow * PARAMETERS.loss_rate;
+                    pipe.flow -= loss;
+                    this.pipeFlowLoss += loss;
+                }
                 const organism = step.organism;
-                organism.energy += energyGained * pipeFactor;
+
+                organism.energy = organism.energy + energyGained * pipeFactor;
+                if (PARAMETERS.enforceMaxEnergy) {
+                    organism.energy = Math.min(organism.energy, PARAMETERS.energyMax);
+                }
             }
         }
     }
-    
+
+    // TODO(Elijah): The pipes are made here
     traceForward(organism, pipe) {
         const chain = [{organism: organism, pipe: pipe}];
         let current = {organism: organism, pipe: pipe};
@@ -507,7 +564,7 @@ class HexGrid {
         }
         let outputColorRequirements = this.getColorRequirements(chain[chain.length - 1].pipe.outputColor);
 
-        return {chain, desiredFlow, inputCell, outputCell, inputColorRequirements, outputColorRequirements};    
+        return {chain, desiredFlow, inputCell, outputCell, inputColorRequirements, outputColorRequirements};
     }
 
     /**
@@ -517,7 +574,7 @@ class HexGrid {
         const wheel = ['R', 'Y', 'G', 'C', 'B', 'M'];
         const idx1 = wheel.indexOf(color1);
         const idx2 = wheel.indexOf(color2);
-        
+
         // Distance around the wheel (min of clockwise and counter-clockwise)
         const dist = Math.abs(idx1 - idx2);
         return Math.min(dist, 6 - dist);
@@ -543,17 +600,17 @@ class HexGrid {
      */
     getAvailableResource(cell, colorReq) {
         if (!cell) return 0;
-        
+
         // For single colors, return that channel
         if (colorReq.R === 1 && colorReq.G === 0 && colorReq.B === 0) return cell.R;
         if (colorReq.R === 0 && colorReq.G === 1 && colorReq.B === 0) return cell.G;
         if (colorReq.R === 0 && colorReq.G === 0 && colorReq.B === 1) return cell.B;
-        
+
         // For dual colors, return minimum of both required channels
         if (colorReq.R === 1 && colorReq.G === 1) return Math.min(cell.R, cell.G); // Yellow
         if (colorReq.G === 1 && colorReq.B === 1) return Math.min(cell.G, cell.B); // Cyan
         if (colorReq.R === 1 && colorReq.B === 1) return Math.min(cell.R, cell.B); // Magenta
-        
+
         return 0;
     }
 
@@ -563,55 +620,71 @@ class HexGrid {
     hexToPixel(q, r) {
         const x = this.cellSize * (3/2 * q);
         const y = this.cellSize * (Math.sqrt(3) * (r + q/2));
+        // const y = this.cellSize * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
+        // const x = this.cellSize * (3/2 * r);
         return {
             x: x + PARAMETERS.gridOffsetX,
             y: y + PARAMETERS.gridOffsetY
         };
     }
-    
+
+    pixelToHex(x, y) {
+        // TODO(Elijah): Make sure this is correct.
+        const ny = (y - PARAMETERS.gridOffsetY) / this.cellSize;
+        const nx = (x - PARAMETERS.gridOffsetX) / this.cellSize;
+        const q = 2/3 * nx;
+        const r = Math.sqrt(3)/3 * ny - 1/3 * nx;
+        const pos = { q: Math.floor(q), r: Math.floor(r) }
+        if (this.isInBounds(pos.q, pos.r)) return pos;
+        else return null;
+    }
+
     /**
      * Draw the entire grid
      */
-    draw(ctx) {        
+    draw(ctx) {
+        // Draw organisms on top
+        for (const organism of this.organisms) {
+            organism.draw(ctx, true);
+        }
+
         // Draw all cells
         for (const [key, cell] of this.cells) {
             this.drawHex(ctx, cell);
         }
-        
-        // Draw organisms on top
+
+        // don't ask... I need this to make it actually draw the pipes... (without having to rewrite stuff)
         for (const organism of this.organisms) {
             organism.draw(ctx);
         }
     }
-    
+
     /**
      * Draw a single hexagon cell
      */
     drawHex(ctx, cell) {
         const center = this.hexToPixel(cell.q, cell.r);
         const size = this.cellSize;
-        
-        // Calculate vertices for flat-top hexagon
-        const vertices = [];
-        for (let i = 0; i < 6; i++) {
-            const angle = Math.PI / 3 * i;
-            vertices.push({
-                x: center.x + size * Math.cos(angle),
-                y: center.y + size * Math.sin(angle)
-            });
-        }
-        
+
         // Draw filled hexagon
         ctx.beginPath();
-        ctx.moveTo(vertices[0].x, vertices[0].y);
+
+        ctx.moveTo(
+            center.x + size * Math.cos(0),
+            center.y + size * Math.sin(0)
+        );
+
         for (let i = 1; i < 6; i++) {
-            ctx.lineTo(vertices[i].x, vertices[i].y);
+            const angle = Math.PI / 3 * i
+            ctx.lineTo(center.x + size * Math.cos(angle),
+                       center.y + size * Math.sin(angle))
         }
         ctx.closePath();
-        
-        const drawRed = document.getElementById("red").checked;
-        const drawGreen = document.getElementById("green").checked;
-        const drawBlue = document.getElementById("blue").checked;
+
+        // force draw colors on cell tiles (for energy display)
+        const drawRed = cell.organism != null || document.getElementById('cell-draw-red').checked;
+        const drawGreen = cell.organism != null || document.getElementById('cell-draw-green').checked;
+        const drawBlue = cell.organism != null || document.getElementById('cell-draw-blue').checked;
         // Color based on RGB concentrations
         // Note: C/M/Y colors emerge from RGB combinations (C=G+B, M=R+B, Y=R+G)
         const r = drawRed ? Math.floor(cell.R) : 0;
@@ -619,11 +692,14 @@ class HexGrid {
         const b = drawBlue ? Math.floor(cell.B) : 0;
         ctx.fillStyle = rgb(r, g, b);
         ctx.fill();
-        
+
         // Draw border (thicker for sources, colored by edge)
         if (cell.isSource) {
             const edgeColor = this.colorWheel[cell.edgeIndex];
             ctx.strokeStyle = rgb(edgeColor.R, edgeColor.G, edgeColor.B);
+            ctx.lineWidth = 2;
+        } else if (cell.organism) {
+            ctx.strokeStyle = '#666666';
             ctx.lineWidth = 2;
         } else {
             ctx.strokeStyle = '#666666';
