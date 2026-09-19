@@ -296,6 +296,21 @@ var DataManager = class DataManager {
 
         const data_str = JSON.stringify(data);
 
+        // Snapshot the run's identity NOW, synchronously.
+        //
+        // reset() calls logData() and then immediately replaces the global
+        // PARAMETERS with the next run's. compress() is async, so anything read
+        // inside the .then() below sees the NEXT run's values. Every packet
+        // written before 2026-09-19 carries the following run's name, params and
+        // randomSeed attached to this run's data - which made the stored runs
+        // unlabelable and unreplayable. Read from these locals, never from the
+        // live PARAMETERS.
+        const params = structuredClone(PARAMETERS);
+        const db = params.db;
+        const collection = params.collection;
+        const name = params.name;
+        const last_tick = this.hexGrid.tick;
+
         compress(data_str).then((comp_data) => {
             const base64 = comp_data.toBase64();
             console.log("compressed!!",
@@ -305,12 +320,12 @@ var DataManager = class DataManager {
                  JSON.stringify(base64).length / data_str.length)
 
             if (socket) socket.emit("insert", structuredClone({
-                db: PARAMETERS.db,
-                collection: PARAMETERS.collection,
+                db: db,
+                collection: collection,
                 data: {
-                    name: PARAMETERS.name,
-                    params: PARAMETERS,
-                    last_tick: this.hexGrid.tick,
+                    name: name,
+                    params: params,
+                    last_tick: last_tick,
                     compressed: base64,
                     population: this.population,
                     uniqueOrganisms: this.uniqueOrganisms,
